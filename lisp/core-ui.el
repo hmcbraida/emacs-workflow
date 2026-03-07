@@ -15,6 +15,10 @@
    'default nil :height
    (* 2 (face-attribute 'default :height nil 'default))))
 
+(use-package dracula-theme
+  :config
+  (load-theme 'dracula t))
+
 (use-package savehist
   :init
   (savehist-mode 1))
