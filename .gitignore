@@ -10,4 +10,5 @@ transient/
 url/
 .org-id-locations
 bookmarks*
-/recentf
+recentf
+var/custom.el
