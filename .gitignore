@@ -1,0 +1,10 @@
+# Emacs package/runtime artifacts
+elpa/
+eln-cache/
+history
+org-roam.db
+auto-save-list/
+transient/
+url/
+.org-id-locations
+bookmarks*

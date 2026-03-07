@@ -36,12 +36,17 @@
 
 ### Phase 1 — Foundation (Org + notes + capture)
 
-1. Create modular Emacs config structure (`early-init.el`, `init.el`, and `lisp/*.el`).
-2. Bootstrap package management and core UI/navigation stack.
-3. Install/configure Org and Org-roam.
-4. Define base directories (`~/org/roam`, `~/org/assets`, optional inbox fallback).
-5. Add capture templates for note types: `idea`, `task`, `resolved`, `ref`.
-6. Bind core workflow commands under `C-c n`.
+Status: completed on 2026-03-07.
+
+1. [x] Create modular Emacs config structure (`early-init.el`, `init.el`, and `lisp/*.el`).
+2. [x] Bootstrap package management and core UI/navigation stack.
+3. [x] Install/configure Org and Org-roam.
+4. [x] Define base directories (`~/org/roam`, `~/org/assets`, optional inbox fallback).
+5. [x] Add capture templates for note types: `idea`, `task`, `resolved`, `ref`.
+6. [x] Bind core workflow commands under `C-c n`.
+7. [x] Add quick capture (`C-c n c`) with no title prompt.
+8. [x] Ensure capture uses full-screen window behavior.
+9. [x] Fix `org-id-locations` warning by setting/creating a valid locations file under `~/org`.
 
 ### Phase 2 — Lifecycle semantics (idea -> task -> resolved)
 
@@ -69,7 +74,7 @@
 3. Implement idea-to-task suggestion command (preview + accept/reject).
 4. Keep all AI writes explicit and user-confirmed.
 
-## Modular File Intent (to be implemented)
+## Modular File Intent (implemented in Phase 1)
 
 - `early-init.el`: startup/performance defaults and package startup behavior.
 - `init.el`: orchestrator that loads all modules in a clear order.
@@ -91,3 +96,9 @@
 - Idea-to-task and task-to-resolved transitions are implemented with required fields.
 - Image paste into notes saves files and inserts valid links.
 - Config is modular, each file has a distinct purpose documented at top.
+
+## Current Status Snapshot
+
+- Completed now: foundational modular config and fast capture workflow.
+- Ready next: Phase 2 lifecycle semantics (`idea -> task -> resolved`) with required-field validation.
+- Deferred by design: image workflow (Phase 4) and AI suggestions (Phase 5).
