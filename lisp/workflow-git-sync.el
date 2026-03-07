@@ -23,12 +23,12 @@
   :group 'workflow-git-sync)
 
 (defcustom workflow-git-sync-auto-pull-enabled t
-  "When non-nil, periodically fetch and fast-forward from upstream."
+  "When non-nil, periodically run a full upstream reconciliation sync."
   :type 'boolean
   :group 'workflow-git-sync)
 
 (defcustom workflow-git-sync-pull-interval-seconds 30
-  "Seconds between automatic upstream pull checks."
+  "Seconds between automatic upstream reconciliation checks."
   :type 'number
   :group 'workflow-git-sync)
 
@@ -47,11 +47,11 @@
 (defvar workflow-git-sync-mode)
 (defvar workflow-git-sync--in-progress nil)
 (defvar workflow-git-sync--pending nil)
-(defvar workflow-git-sync--pending-pull nil)
 (defvar workflow-git-sync--suppress-file-events nil)
 (defvar workflow-git-sync--watch-descriptors nil)
 (defvar workflow-git-sync--process nil)
 (defvar workflow-git-sync--log-buffer " *workflow-git-sync*")
+(defvar workflow-git-sync--refresh-buffers-after-rebase nil)
 
 (defun workflow-git-sync--commit-message ()
   "Return autosync commit message with timestamp."
@@ -99,11 +99,9 @@ When IMMEDIATE is non-nil, bypass debounce and run now."
                          #'workflow-git-sync--start)))))
 
 (defun workflow-git-sync--schedule-pull ()
-  "Schedule an immediate pull run."
+  "Schedule an immediate full sync run."
   (when workflow-git-sync-mode
-    (if workflow-git-sync--in-progress
-        (setq workflow-git-sync--pending-pull t)
-      (workflow-git-sync--start-pull))))
+    (workflow-git-sync--schedule t)))
 
 (defun workflow-git-sync--start-pull-timer ()
   "Start periodic pull timer when enabled."
@@ -253,10 +251,10 @@ Return plist with keys :status (:ok/:error/:timeout), :code, and :output."
              (not workflow-git-sync--in-progress)
              (file-directory-p (workflow-git-sync--org-root)))
     (let ((deadline (+ (float-time) (max 0.1 workflow-git-sync-exit-flush-timeout-seconds)))
-          result
-          had-pending-debounce
-          had-staged
-          ahead-count)
+           result
+           had-pending-debounce
+           had-staged
+           ahead-count)
       (when workflow-git-sync--debounce-timer
         (setq had-pending-debounce t)
         (cancel-timer workflow-git-sync--debounce-timer)
@@ -294,6 +292,19 @@ Return plist with keys :status (:ok/:error/:timeout), :code, and :output."
            (let ((output (workflow-git-sync--run-git-blocking-output result)))
              (if (string-empty-p output) "git commit failed" output)))
           (cl-return-from workflow-git-sync--exit-flush nil)))
+      (setq result (workflow-git-sync--run-git-blocking '("fetch" "--prune") deadline))
+      (unless (workflow-git-sync--run-git-blocking-ok-p result)
+        (workflow-git-sync--exit-flush-error
+         (let ((output (workflow-git-sync--run-git-blocking-output result)))
+           (if (string-empty-p output) "git fetch failed" output)))
+        (cl-return-from workflow-git-sync--exit-flush nil))
+      (setq result (workflow-git-sync--run-git-blocking '("rebase" "@{u}") deadline))
+      (unless (workflow-git-sync--run-git-blocking-ok-p result)
+        (workflow-git-sync--run-git-blocking '("rebase" "--abort") deadline)
+        (workflow-git-sync--exit-flush-error
+         (let ((output (workflow-git-sync--run-git-blocking-output result)))
+           (if (string-empty-p output) "rebase conflict" output)))
+        (cl-return-from workflow-git-sync--exit-flush nil))
       (setq result (workflow-git-sync--run-git-blocking '("rev-list" "--count" "@{u}..HEAD") deadline))
       (unless (workflow-git-sync--run-git-blocking-ok-p result)
         (workflow-git-sync--exit-flush-error
@@ -302,19 +313,6 @@ Return plist with keys :status (:ok/:error/:timeout), :code, and :output."
         (cl-return-from workflow-git-sync--exit-flush nil))
       (setq ahead-count (string-to-number (workflow-git-sync--run-git-blocking-output result)))
       (when (> ahead-count 0)
-        (setq result (workflow-git-sync--run-git-blocking '("fetch" "--prune") deadline))
-        (unless (workflow-git-sync--run-git-blocking-ok-p result)
-          (workflow-git-sync--exit-flush-error
-           (let ((output (workflow-git-sync--run-git-blocking-output result)))
-             (if (string-empty-p output) "git fetch failed" output)))
-          (cl-return-from workflow-git-sync--exit-flush nil))
-        (setq result (workflow-git-sync--run-git-blocking '("rebase" "@{u}") deadline))
-        (unless (workflow-git-sync--run-git-blocking-ok-p result)
-          (workflow-git-sync--run-git-blocking '("rebase" "--abort") deadline)
-          (workflow-git-sync--exit-flush-error
-           (let ((output (workflow-git-sync--run-git-blocking-output result)))
-             (if (string-empty-p output) "rebase conflict" output)))
-          (cl-return-from workflow-git-sync--exit-flush nil))
         (setq result (workflow-git-sync--run-git-blocking '("push") deadline))
         (unless (workflow-git-sync--run-git-blocking-ok-p result)
           (workflow-git-sync--exit-flush-error
@@ -326,14 +324,11 @@ Return plist with keys :status (:ok/:error/:timeout), :code, and :output."
   "Complete the current run and start another if pending."
   (setq workflow-git-sync--in-progress nil
         workflow-git-sync--suppress-file-events nil
+        workflow-git-sync--refresh-buffers-after-rebase nil
         workflow-git-sync--process nil)
-  (cond
-   (workflow-git-sync--pending
+  (when workflow-git-sync--pending
     (setq workflow-git-sync--pending nil)
-    (workflow-git-sync--schedule t))
-   (workflow-git-sync--pending-pull
-    (setq workflow-git-sync--pending-pull nil)
-    (workflow-git-sync--start-pull))))
+    (workflow-git-sync--schedule t)))
 
 (defun workflow-git-sync--start ()
   "Start a sync run if possible."
@@ -347,6 +342,7 @@ Return plist with keys :status (:ok/:error/:timeout), :code, and :output."
    (t
     (setq workflow-git-sync--in-progress t)
     (setq workflow-git-sync--suppress-file-events t)
+    (setq workflow-git-sync--refresh-buffers-after-rebase nil)
     (workflow-git-sync--preflight))))
 
 (defun workflow-git-sync--preflight ()
@@ -364,34 +360,6 @@ Return plist with keys :status (:ok/:error/:timeout), :code, and :output."
      (workflow-git-sync--git-error "org directory is not a git repository")
      (workflow-git-sync--finish))))
 
-(defun workflow-git-sync--preflight-pull ()
-  "Validate git repository and upstream before pulling."
-  (workflow-git-sync--run-git
-   '("rev-parse" "--is-inside-work-tree")
-   (lambda ()
-     (workflow-git-sync--run-git
-      '("rev-parse" "--abbrev-ref" "--symbolic-full-name" "@{u}")
-      #'workflow-git-sync--pull-fetch
-      (lambda (_output)
-        (workflow-git-sync--git-error "current branch has no upstream")
-        (workflow-git-sync--finish))))
-   (lambda (_output)
-     (workflow-git-sync--git-error "org directory is not a git repository")
-     (workflow-git-sync--finish))))
-
-(defun workflow-git-sync--start-pull ()
-  "Start a pull run if possible."
-  (cond
-   (workflow-git-sync--in-progress
-    (setq workflow-git-sync--pending-pull t))
-   ((not (file-directory-p (workflow-git-sync--org-root)))
-    (workflow-git-sync--git-error "org directory does not exist")
-    (workflow-git-sync--finish))
-   (t
-    (setq workflow-git-sync--in-progress t)
-    (setq workflow-git-sync--suppress-file-events t)
-    (workflow-git-sync--preflight-pull))))
-
 (defun workflow-git-sync--git-add ()
   "Run `git add -A'."
   (workflow-git-sync--run-git
@@ -405,7 +373,7 @@ Return plist with keys :status (:ok/:error/:timeout), :code, and :output."
   "Check whether staged changes exist and branch accordingly."
   (workflow-git-sync--run-git
    '("diff" "--cached" "--quiet" "--exit-code")
-   #'workflow-git-sync--check-ahead
+   #'workflow-git-sync--fetch
    (lambda (_output)
      (if (= (process-exit-status workflow-git-sync--process) 1)
          (workflow-git-sync--git-commit)
@@ -424,7 +392,7 @@ Return plist with keys :status (:ok/:error/:timeout), :code, and :output."
      (workflow-git-sync--finish))))
 
 (defun workflow-git-sync--check-ahead ()
-  "Push pending local commits even when no new file changes exist."
+  "Push local commits after remote reconciliation."
   (workflow-git-sync--run-git
    '("rev-list" "--count" "@{u}..HEAD")
    (lambda ()
@@ -434,7 +402,7 @@ Return plist with keys :status (:ok/:error/:timeout), :code, and :output."
                         (string-trim (with-current-buffer buffer (buffer-string))))
                      0)))
        (if (> count 0)
-           (workflow-git-sync--fetch)
+           (workflow-git-sync--push)
          (workflow-git-sync--finish))))
    (lambda (output)
      (workflow-git-sync--git-error "%s" (if (string-empty-p output) "failed checking ahead commits" output))
@@ -444,16 +412,35 @@ Return plist with keys :status (:ok/:error/:timeout), :code, and :output."
   "Fetch remote refs."
   (workflow-git-sync--run-git
    '("fetch" "--prune")
-   #'workflow-git-sync--rebase
+   #'workflow-git-sync--check-behind
    (lambda (output)
      (workflow-git-sync--git-error "%s" (if (string-empty-p output) "git fetch failed" output))
+     (workflow-git-sync--finish))))
+
+(defun workflow-git-sync--check-behind ()
+  "Check whether upstream has commits not yet in local HEAD."
+  (workflow-git-sync--run-git
+   '("rev-list" "--count" "HEAD..@{u}")
+   (lambda ()
+     (let* ((buffer (get-buffer workflow-git-sync--log-buffer))
+            (count (if buffer
+                       (string-to-number
+                        (string-trim (with-current-buffer buffer (buffer-string))))
+                     0)))
+       (setq workflow-git-sync--refresh-buffers-after-rebase (> count 0))
+       (workflow-git-sync--rebase)))
+   (lambda (output)
+     (workflow-git-sync--git-error "%s" (if (string-empty-p output) "failed checking behind commits" output))
      (workflow-git-sync--finish))))
 
 (defun workflow-git-sync--rebase ()
   "Rebase local branch onto upstream."
   (workflow-git-sync--run-git
    '("rebase" "@{u}")
-   #'workflow-git-sync--push
+   (lambda ()
+     (when workflow-git-sync--refresh-buffers-after-rebase
+       (workflow-git-sync--refresh-org-buffers))
+     (workflow-git-sync--check-ahead))
    (lambda (output)
      (workflow-git-sync--run-git
       '("rebase" "--abort")
@@ -471,46 +458,6 @@ Return plist with keys :status (:ok/:error/:timeout), :code, and :output."
    #'workflow-git-sync--finish
    (lambda (output)
      (workflow-git-sync--git-error "%s" (if (string-empty-p output) "git push failed" output))
-     (workflow-git-sync--finish))))
-
-(defun workflow-git-sync--pull-fetch ()
-  "Fetch remote refs before pull check."
-  (workflow-git-sync--run-git
-   '("fetch" "--prune")
-   #'workflow-git-sync--check-divergence
-   (lambda (output)
-     (workflow-git-sync--git-error "%s" (if (string-empty-p output) "git fetch failed" output))
-     (workflow-git-sync--finish))))
-
-(defun workflow-git-sync--parse-left-right-count (text)
-  "Parse git left-right count TEXT into (BEHIND . AHEAD)."
-  (let* ((parts (split-string (string-trim text) "[[:space:]]+" t))
-         (behind (string-to-number (or (car parts) "0")))
-         (ahead (string-to-number (or (cadr parts) "0"))))
-    (cons behind ahead)))
-
-(defun workflow-git-sync--check-divergence ()
-  "Check ahead/behind state before fast-forward pull."
-  (workflow-git-sync--run-git
-   '("rev-list" "--left-right" "--count" "@{u}...HEAD")
-   (lambda ()
-     (let* ((buffer (get-buffer workflow-git-sync--log-buffer))
-            (counts (if buffer
-                        (workflow-git-sync--parse-left-right-count
-                         (with-current-buffer buffer (buffer-string)))
-                      '(0 . 0)))
-            (behind (car counts))
-            (ahead (cdr counts)))
-       (cond
-        ((and (> behind 0) (> ahead 0))
-         (workflow-git-sync--git-error "cannot auto-pull: local and remote have diverged")
-         (workflow-git-sync--finish))
-        ((> behind 0)
-         (workflow-git-sync--pull-ff-only))
-        (t
-         (workflow-git-sync--finish)))))
-   (lambda (output)
-     (workflow-git-sync--git-error "%s" (if (string-empty-p output) "failed checking branch divergence" output))
      (workflow-git-sync--finish))))
 
 (defun workflow-git-sync--refresh-org-buffers ()
@@ -531,24 +478,13 @@ Return plist with keys :status (:ok/:error/:timeout), :code, and :output."
     (when (> skipped 0)
       (message "Workflow git sync: skipped %d modified buffer(s) after pull" skipped))))
 
-(defun workflow-git-sync--pull-ff-only ()
-  "Fast-forward local branch to upstream."
-  (workflow-git-sync--run-git
-   '("merge" "--ff-only" "@{u}")
-   (lambda ()
-     (workflow-git-sync--refresh-org-buffers)
-     (workflow-git-sync--finish))
-   (lambda (output)
-     (workflow-git-sync--git-error "%s" (if (string-empty-p output) "git fast-forward pull failed" output))
-     (workflow-git-sync--finish))))
-
 (defun workflow-git-sync-now ()
   "Trigger an immediate sync run."
   (interactive)
   (workflow-git-sync--schedule t))
 
 (defun workflow-git-sync-pull-now ()
-  "Trigger an immediate pull check run."
+  "Trigger an immediate upstream reconciliation run."
   (interactive)
   (workflow-git-sync--schedule-pull))
 
@@ -561,8 +497,7 @@ Return plist with keys :status (:ok/:error/:timeout), :code, and :output."
       (progn
         (add-hook 'after-save-hook #'workflow-git-sync--after-save-hook)
         (setq workflow-git-sync--suppress-file-events nil
-              workflow-git-sync--pending nil
-              workflow-git-sync--pending-pull nil)
+              workflow-git-sync--pending nil)
         (if (workflow-git-sync--file-notify-available-p)
             (workflow-git-sync--refresh-watches)
           (message "Workflow git sync: file notifications unavailable; using save hook only"))
@@ -580,8 +515,8 @@ Return plist with keys :status (:ok/:error/:timeout), :code, and :output."
       (delete-process workflow-git-sync--process))
     (setq workflow-git-sync--in-progress nil
           workflow-git-sync--pending nil
-          workflow-git-sync--pending-pull nil
           workflow-git-sync--suppress-file-events nil
+          workflow-git-sync--refresh-buffers-after-rebase nil
           workflow-git-sync--process nil)))
 
 (when workflow-git-sync-enabled
