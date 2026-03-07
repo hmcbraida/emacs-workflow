@@ -27,8 +27,18 @@
   :type 'boolean
   :group 'workflow-git-sync)
 
-(defcustom workflow-git-sync-pull-interval-seconds 5
+(defcustom workflow-git-sync-pull-interval-seconds 30
   "Seconds between automatic upstream pull checks."
+  :type 'number
+  :group 'workflow-git-sync)
+
+(defcustom workflow-git-sync-exit-flush-enabled t
+  "When non-nil, attempt one final sync when Emacs exits."
+  :type 'boolean
+  :group 'workflow-git-sync)
+
+(defcustom workflow-git-sync-exit-flush-timeout-seconds 5
+  "Maximum seconds to spend on final sync during Emacs exit."
   :type 'number
   :group 'workflow-git-sync)
 
@@ -42,6 +52,11 @@
 (defvar workflow-git-sync--watch-descriptors nil)
 (defvar workflow-git-sync--process nil)
 (defvar workflow-git-sync--log-buffer " *workflow-git-sync*")
+
+(defun workflow-git-sync--commit-message ()
+  "Return autosync commit message with timestamp."
+  (format "workflow autosync: %s"
+          (format-time-string "%Y-%m-%d %H:%M:%S")))
 
 (defun workflow-git-sync--file-notify-available-p ()
   "Return non-nil when file notifications are supported."
@@ -180,8 +195,128 @@ Callbacks run only when `workflow-git-sync-mode' is still active."
                  (if (and workflow-git-sync-mode
                           (= (process-exit-status proc) 0))
                      (funcall on-success)
-                   (when workflow-git-sync-mode
-                     (funcall on-failure output))))))))))
+                    (when workflow-git-sync-mode
+                      (funcall on-failure output))))))))))
+
+(defun workflow-git-sync--run-git-blocking (args deadline)
+  "Run git ARGS until DEADLINE.
+Return plist with keys :status (:ok/:error/:timeout), :code, and :output."
+  (let* ((default-directory (workflow-git-sync--org-root))
+         (buffer (get-buffer-create workflow-git-sync--log-buffer))
+         (proc (make-process
+                :name "workflow-git-sync-exit"
+                :buffer buffer
+                :command (append (list "git") args)
+                :noquery t)))
+    (with-current-buffer buffer
+      (erase-buffer))
+    (while (and (process-live-p proc)
+                (< (float-time) deadline))
+      (accept-process-output proc 0.05))
+    (cond
+     ((process-live-p proc)
+      (delete-process proc)
+      (list :status :timeout :code nil :output ""))
+     (t
+      (let ((output (string-trim
+                     (with-current-buffer buffer
+                       (buffer-string))))
+            (code (process-exit-status proc)))
+        (if (= code 0)
+            (list :status :ok :code code :output output)
+          (list :status :error :code code :output output)))))))
+
+(defun workflow-git-sync--run-git-blocking-ok-p (result)
+  "Return non-nil when RESULT from `workflow-git-sync--run-git-blocking' succeeded."
+  (eq (plist-get result :status) :ok))
+
+(defun workflow-git-sync--run-git-blocking-timeout-p (result)
+  "Return non-nil when RESULT from blocking git call timed out."
+  (eq (plist-get result :status) :timeout))
+
+(defun workflow-git-sync--run-git-blocking-code (result)
+  "Return exit code from blocking git RESULT."
+  (plist-get result :code))
+
+(defun workflow-git-sync--run-git-blocking-output (result)
+  "Return output text from blocking git RESULT."
+  (plist-get result :output))
+
+(defun workflow-git-sync--exit-flush-error (message-text)
+  "Report MESSAGE-TEXT for exit flush errors."
+  (message "Workflow git sync failed during exit flush: %s" message-text))
+
+(defun workflow-git-sync--exit-flush ()
+  "Attempt one best-effort sync before Emacs exits."
+  (when (and workflow-git-sync-mode
+             workflow-git-sync-exit-flush-enabled
+             (not workflow-git-sync--in-progress)
+             (file-directory-p (workflow-git-sync--org-root)))
+    (let ((deadline (+ (float-time) (max 0.1 workflow-git-sync-exit-flush-timeout-seconds)))
+          result
+          had-staged
+          ahead-count)
+      (when workflow-git-sync--debounce-timer
+        (cancel-timer workflow-git-sync--debounce-timer)
+        (setq workflow-git-sync--debounce-timer nil))
+      (setq result (workflow-git-sync--run-git-blocking '("rev-parse" "--is-inside-work-tree") deadline))
+      (unless (workflow-git-sync--run-git-blocking-ok-p result)
+        (cl-return-from workflow-git-sync--exit-flush nil))
+      (setq result (workflow-git-sync--run-git-blocking '("rev-parse" "--abbrev-ref" "--symbolic-full-name" "@{u}") deadline))
+      (unless (workflow-git-sync--run-git-blocking-ok-p result)
+        (cl-return-from workflow-git-sync--exit-flush nil))
+      (setq result (workflow-git-sync--run-git-blocking '("add" "-A") deadline))
+      (unless (workflow-git-sync--run-git-blocking-ok-p result)
+        (workflow-git-sync--exit-flush-error
+         (let ((output (workflow-git-sync--run-git-blocking-output result)))
+           (if (string-empty-p output) "git add failed" output)))
+        (cl-return-from workflow-git-sync--exit-flush nil))
+      (setq result (workflow-git-sync--run-git-blocking '("diff" "--cached" "--quiet" "--exit-code") deadline)
+            had-staged (= 1 (or (workflow-git-sync--run-git-blocking-code result) 0)))
+      (cond
+       ((workflow-git-sync--run-git-blocking-timeout-p result)
+        (workflow-git-sync--exit-flush-error "timeout checking staged changes")
+        (cl-return-from workflow-git-sync--exit-flush nil))
+       ((and (not had-staged)
+             (not (workflow-git-sync--run-git-blocking-ok-p result)))
+        (workflow-git-sync--exit-flush-error "failed checking staged changes")
+        (cl-return-from workflow-git-sync--exit-flush nil)))
+      (when had-staged
+        (setq result (workflow-git-sync--run-git-blocking
+                      (list "commit" "-m" (workflow-git-sync--commit-message))
+                      deadline))
+        (unless (workflow-git-sync--run-git-blocking-ok-p result)
+          (workflow-git-sync--exit-flush-error
+           (let ((output (workflow-git-sync--run-git-blocking-output result)))
+             (if (string-empty-p output) "git commit failed" output)))
+          (cl-return-from workflow-git-sync--exit-flush nil)))
+      (setq result (workflow-git-sync--run-git-blocking '("rev-list" "--count" "@{u}..HEAD") deadline))
+      (unless (workflow-git-sync--run-git-blocking-ok-p result)
+        (workflow-git-sync--exit-flush-error
+         (let ((output (workflow-git-sync--run-git-blocking-output result)))
+           (if (string-empty-p output) "failed checking ahead commits" output)))
+        (cl-return-from workflow-git-sync--exit-flush nil))
+      (setq ahead-count (string-to-number (workflow-git-sync--run-git-blocking-output result)))
+      (when (> ahead-count 0)
+        (setq result (workflow-git-sync--run-git-blocking '("fetch" "--prune") deadline))
+        (unless (workflow-git-sync--run-git-blocking-ok-p result)
+          (workflow-git-sync--exit-flush-error
+           (let ((output (workflow-git-sync--run-git-blocking-output result)))
+             (if (string-empty-p output) "git fetch failed" output)))
+          (cl-return-from workflow-git-sync--exit-flush nil))
+        (setq result (workflow-git-sync--run-git-blocking '("rebase" "@{u}") deadline))
+        (unless (workflow-git-sync--run-git-blocking-ok-p result)
+          (workflow-git-sync--run-git-blocking '("rebase" "--abort") deadline)
+          (workflow-git-sync--exit-flush-error
+           (let ((output (workflow-git-sync--run-git-blocking-output result)))
+             (if (string-empty-p output) "rebase conflict" output)))
+          (cl-return-from workflow-git-sync--exit-flush nil))
+        (setq result (workflow-git-sync--run-git-blocking '("push") deadline))
+        (unless (workflow-git-sync--run-git-blocking-ok-p result)
+          (workflow-git-sync--exit-flush-error
+           (let ((output (workflow-git-sync--run-git-blocking-output result)))
+             (if (string-empty-p output) "git push failed" output)))
+          (cl-return-from workflow-git-sync--exit-flush nil))))))
 
 (defun workflow-git-sync--finish ()
   "Complete the current run and start another if pending."
@@ -226,7 +361,7 @@ Callbacks run only when `workflow-git-sync-mode' is still active."
      (workflow-git-sync--finish))))
 
 (defun workflow-git-sync--preflight-pull ()
-  "Validate git repository and upstream before pulling." 
+  "Validate git repository and upstream before pulling."
   (workflow-git-sync--run-git
    '("rev-parse" "--is-inside-work-tree")
    (lambda ()
@@ -278,8 +413,7 @@ Callbacks run only when `workflow-git-sync-mode' is still active."
   "Create an autosync commit."
   (workflow-git-sync--run-git
    (list "commit" "-m"
-         (format "workflow autosync: %s"
-                 (format-time-string "%Y-%m-%d %H:%M:%S")))
+         (workflow-git-sync--commit-message))
    #'workflow-git-sync--fetch
    (lambda (output)
      (workflow-git-sync--git-error "%s" (if (string-empty-p output) "git commit failed" output))
@@ -424,11 +558,13 @@ Callbacks run only when `workflow-git-sync-mode' is still active."
         (if (workflow-git-sync--file-notify-available-p)
             (workflow-git-sync--refresh-watches)
           (message "Workflow git sync: file notifications unavailable; using save hook only"))
+        (add-hook 'kill-emacs-hook #'workflow-git-sync--exit-flush)
         (workflow-git-sync--start-pull-timer))
     (remove-hook 'after-save-hook #'workflow-git-sync--after-save-hook)
     (when workflow-git-sync--debounce-timer
       (cancel-timer workflow-git-sync--debounce-timer)
       (setq workflow-git-sync--debounce-timer nil))
+    (remove-hook 'kill-emacs-hook #'workflow-git-sync--exit-flush)
     (workflow-git-sync--stop-pull-timer)
     (workflow-git-sync--remove-watches)
     (when (process-live-p workflow-git-sync--process)
