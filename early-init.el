@@ -17,15 +17,20 @@
 (add-to-list 'initial-frame-alist '(fullscreen . maximized))
 (add-to-list 'default-frame-alist '(fullscreen . maximized))
 
-;; Keep auto-save and backup files inside this config directory.
+;; Keep auto-save, backup, and lock files inside this config directory.
 (let* ((workflow-var-dir (expand-file-name "var/" user-emacs-directory))
        (workflow-backup-dir (expand-file-name "backups/" workflow-var-dir))
-       (workflow-autosave-dir (expand-file-name "auto-saves/" workflow-var-dir)))
-  (dolist (dir (list workflow-var-dir workflow-backup-dir workflow-autosave-dir))
+       (workflow-autosave-dir (expand-file-name "auto-saves/" workflow-var-dir))
+       (workflow-lockfiles-dir (expand-file-name "lock-files/" workflow-var-dir)))
+  (dolist (dir (list workflow-var-dir
+                     workflow-backup-dir
+                     workflow-autosave-dir
+                     workflow-lockfiles-dir))
     (make-directory dir t))
   (setq backup-directory-alist `(("." . ,workflow-backup-dir))
         auto-save-file-name-transforms `((".*" ,workflow-autosave-dir t))
-        auto-save-list-file-prefix (expand-file-name ".saves-" workflow-autosave-dir)))
+        auto-save-list-file-prefix (expand-file-name ".saves-" workflow-autosave-dir)
+        lock-file-name-transforms `((".*" ,workflow-lockfiles-dir t))))
 
 ;; Keep startup responsive; restore normal values after init.
 (defvar workflow/default-gc-cons-threshold gc-cons-threshold)
