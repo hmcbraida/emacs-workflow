@@ -567,7 +567,8 @@ Return plist with keys :status (:ok/:error/:timeout), :code, and :output."
             (workflow-git-sync--refresh-watches)
           (message "Workflow git sync: file notifications unavailable; using save hook only"))
         (add-hook 'kill-emacs-hook #'workflow-git-sync--exit-flush)
-        (workflow-git-sync--start-pull-timer))
+        (workflow-git-sync--start-pull-timer)
+        (workflow-git-sync--schedule-pull))
     (remove-hook 'after-save-hook #'workflow-git-sync--after-save-hook)
     (when workflow-git-sync--debounce-timer
       (cancel-timer workflow-git-sync--debounce-timer)
