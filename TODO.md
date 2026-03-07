@@ -87,10 +87,13 @@ Status: completed on 2026-03-07.
 
 ### Phase 5 — AI extension layer (optional, approval-based)
 
-1. Add `gptel` abstraction supporting SaaS and local endpoints.
-2. Implement similar-note/link suggestion command (preview + accept/reject).
-3. Implement idea-to-task suggestion command (preview + accept/reject).
-4. Keep all AI writes explicit and user-confirmed.
+Status: in progress on 2026-03-07.
+
+1. [x] Add provider-agnostic `gptel` integration that uses the active gptel backend/model.
+2. [x] Add minimal AI smoke command to summarize current note into a preview buffer (no writes).
+3. [ ] Implement similar-note/link suggestion command (preview + accept/reject).
+4. [ ] Implement idea-to-task suggestion command (preview + accept/reject).
+5. [ ] Keep all AI writes explicit and user-confirmed.
 
 ## Modular File Intent (implemented in Phase 1)
 
@@ -122,5 +125,5 @@ Status: completed on 2026-03-07.
 - Completed now: quick-capture triage workflow (`quick -> idea/task/archive/cancel`) with one-by-one inbox loop.
 - Completed now: Phase 3 search/navigation with tag-based open-task semantics and active-task filtering.
 - Completed now: Phase 4 image workflow with org-download and inline preview commands.
-- Ready next: Phase 5 AI extension layer (optional).
-- Deferred by design: AI suggestions (Phase 5).
+- In progress now: Phase 5 AI extension layer scaffold with minimal summary preview command.
+- Deferred by design (until next step): AI suggestion apply flows (links, idea->task).

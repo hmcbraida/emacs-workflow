@@ -11,3 +11,4 @@ url/
 .org-id-locations
 bookmarks*
 /recentf
+**/*.elc
