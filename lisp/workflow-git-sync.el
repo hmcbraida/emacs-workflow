@@ -254,11 +254,15 @@ Return plist with keys :status (:ok/:error/:timeout), :code, and :output."
              (file-directory-p (workflow-git-sync--org-root)))
     (let ((deadline (+ (float-time) (max 0.1 workflow-git-sync-exit-flush-timeout-seconds)))
           result
+          had-pending-debounce
           had-staged
           ahead-count)
       (when workflow-git-sync--debounce-timer
+        (setq had-pending-debounce t)
         (cancel-timer workflow-git-sync--debounce-timer)
         (setq workflow-git-sync--debounce-timer nil))
+      (when had-pending-debounce
+        (message "Workflow git sync: flushing pending changes before exit..."))
       (setq result (workflow-git-sync--run-git-blocking '("rev-parse" "--is-inside-work-tree") deadline))
       (unless (workflow-git-sync--run-git-blocking-ok-p result)
         (cl-return-from workflow-git-sync--exit-flush nil))
@@ -511,7 +515,8 @@ Return plist with keys :status (:ok/:error/:timeout), :code, and :output."
 
 (defun workflow-git-sync--refresh-org-buffers ()
   "Revert unmodified buffers visiting files under workflow org root."
-  (let ((skipped 0))
+  (let ((skipped 0)
+        (reverted 0))
     (dolist (buffer (buffer-list))
       (with-current-buffer buffer
         (when (and buffer-file-name
@@ -519,7 +524,10 @@ Return plist with keys :status (:ok/:error/:timeout), :code, and :output."
                    (file-exists-p buffer-file-name))
           (if (buffer-modified-p)
               (setq skipped (1+ skipped))
-            (revert-buffer :ignore-auto :noconfirm)))))
+            (revert-buffer :ignore-auto :noconfirm)
+            (setq reverted (1+ reverted))))))
+    (when (> reverted 0)
+      (message "Workflow git sync: refreshed %d open unmodified buffer(s) with synced content" reverted))
     (when (> skipped 0)
       (message "Workflow git sync: skipped %d modified buffer(s) after pull" skipped))))
 
