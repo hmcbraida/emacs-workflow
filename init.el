@@ -5,6 +5,9 @@
 
 (add-to-list 'load-path (expand-file-name "lisp" user-emacs-directory))
 
+(setq custom-file (expand-file-name "var/custom.el" user-emacs-directory))
+(load custom-file 'noerror)
+
 (require 'core-packages)
 (require 'core-ui)
 (require 'org-core)
