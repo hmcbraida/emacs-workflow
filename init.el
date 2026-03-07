@@ -9,6 +9,7 @@
 (require 'core-ui)
 (require 'org-core)
 (require 'org-roam-config)
+(require 'workflow-lifecycle)
 (require 'workflow-keys)
 
 (provide 'init)

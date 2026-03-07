@@ -50,10 +50,22 @@ Status: completed on 2026-03-07.
 
 ### Phase 2 — Lifecycle semantics (idea -> task -> resolved)
 
-1. Define task metadata fields and required sections (notably done criteria).
-2. Implement command to promote current idea note into one or multiple tasks.
-3. Implement command to resolve a task into resolved state/note.
-4. Add validation guards for required fields on transitions.
+Status: completed on 2026-03-07.
+
+1. [x] Define task metadata fields and required sections (notably done criteria).
+2. [x] Implement command to promote current idea note into one or multiple tasks.
+3. [x] Implement command to resolve a task into resolved state/note.
+4. [x] Add validation guards for required fields on transitions.
+
+### Phase 2.5 — Triage workflow for quick captures
+
+Status: planned.
+
+1. [ ] Add a triage command to list/process notes tagged `:quick:`.
+2. [ ] Add actions to convert quick notes into structured idea notes.
+3. [ ] Add actions to promote quick/idea notes into tasks during triage.
+4. [ ] Add actions to archive/cancel notes that are no longer relevant.
+5. [ ] Add a one-by-one triage loop command for low-friction inbox processing.
 
 ### Phase 3 — Search, navigation, and link symmetry in use
 
@@ -99,6 +111,6 @@ Status: completed on 2026-03-07.
 
 ## Current Status Snapshot
 
-- Completed now: foundational modular config and fast capture workflow.
-- Ready next: Phase 2 lifecycle semantics (`idea -> task -> resolved`) with required-field validation.
+- Completed now: foundational modular config, fast capture workflow, and lifecycle transitions (`idea -> task -> resolved`).
+- Ready next: Phase 3 search/navigation polish and link symmetry ergonomics.
 - Deferred by design: image workflow (Phase 4) and AI suggestions (Phase 5).

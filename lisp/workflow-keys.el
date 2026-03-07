@@ -6,9 +6,15 @@
 (require 'org)
 (require 'org-roam)
 (require 'org-roam-config)
+(require 'workflow-lifecycle)
 
 (defvar workflow-notes-map (make-sparse-keymap)
   "Keymap for personal workflow commands.")
+
+(defun workflow-search-notes ()
+  "Run regex search scoped to the workflow notes directory."
+  (interactive)
+  (consult-ripgrep workflow-org-directory))
 
 (define-key global-map (kbd "C-c n") workflow-notes-map)
 
@@ -26,6 +32,10 @@
 
 ;; Linking and search
 (define-key workflow-notes-map (kbd "l") #'org-store-link)
-(define-key workflow-notes-map (kbd "s") #'consult-ripgrep)
+(define-key workflow-notes-map (kbd "s") #'workflow-search-notes)
+
+;; Lifecycle transitions
+(define-key workflow-notes-map (kbd "p") #'workflow-promote-idea-to-tasks)
+(define-key workflow-notes-map (kbd "x") #'workflow-resolve-task)
 
 (provide 'workflow-keys)
