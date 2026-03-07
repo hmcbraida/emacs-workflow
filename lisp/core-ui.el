@@ -9,7 +9,11 @@
         tab-always-indent 'complete
         read-buffer-completion-ignore-case t
         read-file-name-completion-ignore-case t
-        completion-ignore-case t))
+        completion-ignore-case t)
+  :config
+  (set-face-attribute
+   'default nil :height
+   (* 2 (face-attribute 'default :height nil 'default))))
 
 (use-package savehist
   :init

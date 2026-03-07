@@ -52,6 +52,10 @@
 
 (use-package org
   :ensure nil
+  :hook ((org-mode . refill-mode)
+         (org-mode . (lambda ()
+                       (setq-local fill-column 80)
+                       (auto-fill-mode -1))))
   :config
   (setq org-log-done 'time))
 
