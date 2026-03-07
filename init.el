@@ -13,6 +13,7 @@
 (require 'workflow-triage)
 (require 'workflow-search)
 (require 'workflow-media)
+(require 'workflow-ai)
 (require 'workflow-keys)
 
 (provide 'init)

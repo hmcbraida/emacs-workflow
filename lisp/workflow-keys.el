@@ -10,6 +10,7 @@
 (require 'workflow-triage)
 (require 'workflow-search)
 (require 'workflow-media)
+(require 'workflow-ai)
 
 (defvar workflow-notes-map (make-sparse-keymap)
   "Keymap for personal workflow commands.")
@@ -54,5 +55,9 @@
 (define-key workflow-notes-map (kbd "m p") #'workflow-media-insert-from-clipboard)
 (define-key workflow-notes-map (kbd "m s") #'workflow-media-screenshot)
 (define-key workflow-notes-map (kbd "m i") #'org-toggle-inline-images)
+
+;; AI
+(define-key workflow-notes-map (kbd "a c") #'workflow-ai-chat)
+(define-key workflow-notes-map (kbd "a s") #'workflow-ai-summarize-current-note)
 
 (provide 'workflow-keys)
