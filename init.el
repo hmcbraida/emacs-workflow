@@ -9,6 +9,7 @@
 (require 'core-ui)
 (require 'org-core)
 (require 'org-roam-config)
+(require 'workflow-git-sync)
 (require 'workflow-lifecycle)
 (require 'workflow-triage)
 (require 'workflow-search)
