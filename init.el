@@ -10,6 +10,7 @@
 (require 'org-core)
 (require 'org-roam-config)
 (require 'workflow-lifecycle)
+(require 'workflow-triage)
 (require 'workflow-keys)
 
 (provide 'init)

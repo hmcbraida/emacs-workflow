@@ -59,13 +59,13 @@ Status: completed on 2026-03-07.
 
 ### Phase 2.5 — Triage workflow for quick captures
 
-Status: planned.
+Status: completed on 2026-03-07.
 
-1. [ ] Add a triage command to list/process notes tagged `:quick:`.
-2. [ ] Add actions to convert quick notes into structured idea notes.
-3. [ ] Add actions to promote quick/idea notes into tasks during triage.
-4. [ ] Add actions to archive/cancel notes that are no longer relevant.
-5. [ ] Add a one-by-one triage loop command for low-friction inbox processing.
+1. [x] Add a triage command to list/process notes tagged `:quick:`.
+2. [x] Add actions to convert quick notes into structured idea notes.
+3. [x] Add actions to promote quick/idea notes into tasks during triage.
+4. [x] Add actions to archive/cancel notes that are no longer relevant.
+5. [x] Add a one-by-one triage loop command for low-friction inbox processing.
 
 ### Phase 3 — Search, navigation, and link symmetry in use
 
@@ -95,6 +95,7 @@ Status: planned.
 - `lisp/org-core.el`: base Org behavior, files, and capture defaults.
 - `lisp/org-roam-config.el`: Org-roam directories, DB autosync, node/capture templates.
 - `lisp/workflow-lifecycle.el`: custom commands and validation for idea/task/resolved transitions.
+- `lisp/workflow-triage.el`: quick-capture triage actions and one-by-one triage loop.
 - `lisp/workflow-search.el`: regex/search commands and saved task views.
 - `lisp/workflow-media.el`: image insertion/download behavior.
 - `lisp/workflow-keys.el`: all `C-c n` keybindings in one place.
@@ -112,5 +113,6 @@ Status: planned.
 ## Current Status Snapshot
 
 - Completed now: foundational modular config, fast capture workflow, and lifecycle transitions (`idea -> task -> resolved`).
+- Completed now: quick-capture triage workflow (`quick -> idea/task/archive/cancel`) with one-by-one inbox loop.
 - Ready next: Phase 3 search/navigation polish and link symmetry ergonomics.
 - Deferred by design: image workflow (Phase 4) and AI suggestions (Phase 5).

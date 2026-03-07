@@ -7,6 +7,7 @@
 (require 'org-roam)
 (require 'org-roam-config)
 (require 'workflow-lifecycle)
+(require 'workflow-triage)
 
 (defvar workflow-notes-map (make-sparse-keymap)
   "Keymap for personal workflow commands.")
@@ -37,5 +38,10 @@
 ;; Lifecycle transitions
 (define-key workflow-notes-map (kbd "p") #'workflow-promote-idea-to-tasks)
 (define-key workflow-notes-map (kbd "x") #'workflow-resolve-task)
+
+;; Triage
+(define-key workflow-notes-map (kbd "q f") #'workflow-triage-find-quick-note)
+(define-key workflow-notes-map (kbd "q t") #'workflow-triage-current-note)
+(define-key workflow-notes-map (kbd "q l") #'workflow-triage-loop)
 
 (provide 'workflow-keys)
