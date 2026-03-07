@@ -79,9 +79,11 @@ Status: completed on 2026-03-07.
 
 ### Phase 4 — Image workflow
 
-1. Configure `org-download` for paste/screenshot flows.
-2. Ensure images are stored in `~/org/assets` (or per-note subdirs if preferred).
-3. Add helper command/keybinding to insert and preview images inline.
+Status: completed on 2026-03-07.
+
+1. [x] Configure `org-download` for paste/screenshot flows.
+2. [x] Ensure images are stored in `~/org/assets` (or per-note subdirs if preferred).
+3. [x] Add helper command/keybinding to insert and preview images inline.
 
 ### Phase 5 — AI extension layer (optional, approval-based)
 
@@ -101,7 +103,7 @@ Status: completed on 2026-03-07.
 - `lisp/workflow-lifecycle.el`: custom commands and validation for idea/task/resolved transitions.
 - `lisp/workflow-triage.el`: quick-capture triage actions and one-by-one triage loop.
 - `lisp/workflow-search.el`: regex/search commands, saved task views, linked-task views, and related-notes panel helpers.
-- `lisp/workflow-media.el`: image insertion/download behavior.
+- `lisp/workflow-media.el`: image capture commands (clipboard/screenshot), asset directory policy, and inline display helpers.
 - `lisp/workflow-keys.el`: all `C-c n` keybindings in one place.
 - `lisp/workflow-ai.el`: optional AI integration scaffold, disabled unless configured.
 
@@ -119,5 +121,6 @@ Status: completed on 2026-03-07.
 - Completed now: foundational modular config, fast capture workflow, and lifecycle transitions (`idea -> task -> resolved`).
 - Completed now: quick-capture triage workflow (`quick -> idea/task/archive/cancel`) with one-by-one inbox loop.
 - Completed now: Phase 3 search/navigation with tag-based open-task semantics and active-task filtering.
-- Ready next: Phase 4 image workflow.
+- Completed now: Phase 4 image workflow with org-download and inline preview commands.
+- Ready next: Phase 5 AI extension layer (optional).
 - Deferred by design: AI suggestions (Phase 5).

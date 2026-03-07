@@ -9,6 +9,7 @@
 (require 'workflow-lifecycle)
 (require 'workflow-triage)
 (require 'workflow-search)
+(require 'workflow-media)
 
 (defvar workflow-notes-map (make-sparse-keymap)
   "Keymap for personal workflow commands.")
@@ -48,5 +49,10 @@
 (define-key workflow-notes-map (kbd "q f") #'workflow-triage-find-quick-note)
 (define-key workflow-notes-map (kbd "q t") #'workflow-triage-current-note)
 (define-key workflow-notes-map (kbd "q l") #'workflow-triage-loop)
+
+;; Media
+(define-key workflow-notes-map (kbd "m p") #'workflow-media-insert-from-clipboard)
+(define-key workflow-notes-map (kbd "m s") #'workflow-media-screenshot)
+(define-key workflow-notes-map (kbd "m i") #'org-toggle-inline-images)
 
 (provide 'workflow-keys)

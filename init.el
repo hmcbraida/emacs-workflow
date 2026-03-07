@@ -12,6 +12,7 @@
 (require 'workflow-lifecycle)
 (require 'workflow-triage)
 (require 'workflow-search)
+(require 'workflow-media)
 (require 'workflow-keys)
 
 (provide 'init)
