@@ -27,7 +27,7 @@
   :type 'boolean
   :group 'workflow-git-sync)
 
-(defcustom workflow-git-sync-pull-interval-seconds 30
+(defcustom workflow-git-sync-pull-interval-seconds 5
   "Seconds between automatic upstream pull checks."
   :type 'number
   :group 'workflow-git-sync)

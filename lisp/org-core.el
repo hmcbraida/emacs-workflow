@@ -41,7 +41,6 @@
       org-default-notes-file workflow-inbox-file
       org-capture-window-setup 'delete-other-windows
       org-return-follows-link t
-      org-startup-folded 'content
       org-hide-emphasis-markers t)
 
 (setq org-id-locations-file (expand-file-name ".org-id-locations" workflow-org-directory))
