@@ -4,6 +4,8 @@ eln-cache/
 history
 org-roam.db
 auto-save-list/
+var/backups/
+var/auto-saves/
 transient/
 url/
 .org-id-locations

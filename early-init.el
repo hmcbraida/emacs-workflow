@@ -14,6 +14,19 @@
 (tool-bar-mode -1)
 (scroll-bar-mode -1)
 
+(add-to-list 'initial-frame-alist '(fullscreen . maximized))
+(add-to-list 'default-frame-alist '(fullscreen . maximized))
+
+;; Keep auto-save and backup files inside this config directory.
+(let* ((workflow-var-dir (expand-file-name "var/" user-emacs-directory))
+       (workflow-backup-dir (expand-file-name "backups/" workflow-var-dir))
+       (workflow-autosave-dir (expand-file-name "auto-saves/" workflow-var-dir)))
+  (dolist (dir (list workflow-var-dir workflow-backup-dir workflow-autosave-dir))
+    (make-directory dir t))
+  (setq backup-directory-alist `(("." . ,workflow-backup-dir))
+        auto-save-file-name-transforms `((".*" ,workflow-autosave-dir t))
+        auto-save-list-file-prefix (expand-file-name ".saves-" workflow-autosave-dir)))
+
 ;; Keep startup responsive; restore normal values after init.
 (defvar workflow/default-gc-cons-threshold gc-cons-threshold)
 (setq gc-cons-threshold (* 64 1024 1024)
