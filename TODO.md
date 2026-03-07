@@ -69,9 +69,13 @@ Status: completed on 2026-03-07.
 
 ### Phase 3 — Search, navigation, and link symmetry in use
 
-1. Configure regex search over notes (`consult-ripgrep` or equivalent).
-2. Add backlinks/related-items views in the primary reading workflow.
-3. Add saved query commands for open tasks, linked tasks, and recent resolutions.
+Status: completed on 2026-03-07.
+
+1. [x] Configure regex search over notes (`consult-ripgrep` or equivalent).
+2. [x] Add backlinks/related-items views in the primary reading workflow.
+3. [x] Add saved query commands for open tasks, linked tasks, and recent resolutions.
+4. [x] Define and implement tag-based open-task semantics: `:task:` and not tagged `:resolved:`, `:cancelled:`, or `:archived:`.
+5. [x] Add active-task view as open tasks excluding `:blocked:`.
 
 ### Phase 4 — Image workflow
 
@@ -96,7 +100,7 @@ Status: completed on 2026-03-07.
 - `lisp/org-roam-config.el`: Org-roam directories, DB autosync, node/capture templates.
 - `lisp/workflow-lifecycle.el`: custom commands and validation for idea/task/resolved transitions.
 - `lisp/workflow-triage.el`: quick-capture triage actions and one-by-one triage loop.
-- `lisp/workflow-search.el`: regex/search commands and saved task views.
+- `lisp/workflow-search.el`: regex/search commands, saved task views, linked-task views, and related-notes panel helpers.
 - `lisp/workflow-media.el`: image insertion/download behavior.
 - `lisp/workflow-keys.el`: all `C-c n` keybindings in one place.
 - `lisp/workflow-ai.el`: optional AI integration scaffold, disabled unless configured.
@@ -114,5 +118,6 @@ Status: completed on 2026-03-07.
 
 - Completed now: foundational modular config, fast capture workflow, and lifecycle transitions (`idea -> task -> resolved`).
 - Completed now: quick-capture triage workflow (`quick -> idea/task/archive/cancel`) with one-by-one inbox loop.
-- Ready next: Phase 3 search/navigation polish and link symmetry ergonomics.
-- Deferred by design: image workflow (Phase 4) and AI suggestions (Phase 5).
+- Completed now: Phase 3 search/navigation with tag-based open-task semantics and active-task filtering.
+- Ready next: Phase 4 image workflow.
+- Deferred by design: AI suggestions (Phase 5).

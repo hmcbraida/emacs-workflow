@@ -9,7 +9,7 @@
 (require 'subr-x)
 (require 'workflow-lifecycle)
 
-(defun workflow--quick-nodes ()
+(defun workflow-triage--quick-nodes ()
   "Return Org-roam nodes tagged with `quick'."
   (let ((nodes (seq-filter
                 (lambda (node)
@@ -17,19 +17,19 @@
                 (org-roam-node-list))))
     (seq-sort-by #'org-roam-node-file-mtime #'time-less-p nodes)))
 
-(defun workflow--set-current-filetags (tags)
+(defun workflow-triage--set-current-filetags (tags)
   "Set current note file TAGS exactly."
   (let ((cleaned (seq-uniq (seq-filter (lambda (tag) (not (string-empty-p tag))) tags))))
     (org-roam-set-keyword "filetags" (org-make-tag-string cleaned))))
 
-(defun workflow--update-current-filetags (add remove)
+(defun workflow-triage--update-current-filetags (add remove)
   "Add tags in ADD and remove tags in REMOVE for current note."
   (let* ((current (split-string
                    (or (cadr (assoc "FILETAGS" (org-collect-keywords '("FILETAGS")))) "")
                    ":" t))
          (after-remove (seq-difference current remove #'string-equal))
          (result (append add after-remove)))
-    (workflow--set-current-filetags result)
+    (workflow-triage--set-current-filetags result)
     (save-buffer)
     (org-roam-db-update-file)
     result))
@@ -45,19 +45,19 @@
 (defun workflow-triage-mark-as-idea ()
   "Mark current quick note as a structured idea (remove `quick', keep `idea')."
   (interactive)
-  (workflow--update-current-filetags '("idea") '("quick"))
+  (workflow-triage--update-current-filetags '("idea") '("quick"))
   (message "Marked note as idea and removed quick tag"))
 
 (defun workflow-triage-archive-current ()
   "Archive current quick note by tagging it `archived' and removing `quick'."
   (interactive)
-  (workflow--update-current-filetags '("archived") '("quick"))
+  (workflow-triage--update-current-filetags '("archived") '("quick"))
   (message "Archived note and removed quick tag"))
 
 (defun workflow-triage-cancel-current ()
   "Cancel current quick note by tagging it `cancelled' and removing `quick'."
   (interactive)
-  (workflow--update-current-filetags '("cancelled") '("quick"))
+  (workflow-triage--update-current-filetags '("cancelled") '("quick"))
   (message "Cancelled note and removed quick tag"))
 
 (defun workflow-triage-promote-current-to-task ()
@@ -67,11 +67,11 @@
     (unless (member "idea" (split-string
                             (or (cadr (assoc "FILETAGS" (org-collect-keywords '("FILETAGS")))) "")
                             ":" t))
-      (workflow--update-current-filetags '("idea") nil))
+      (workflow-triage--update-current-filetags '("idea") nil))
     (call-interactively #'workflow-promote-idea-to-tasks)
     (when (buffer-live-p source-buffer)
       (with-current-buffer source-buffer
-        (workflow--update-current-filetags nil '("quick")))))
+        (workflow-triage--update-current-filetags nil '("quick")))))
   (message "Promoted note to task(s) and removed quick tag"))
 
 (defun workflow-triage-current-note ()
@@ -94,7 +94,7 @@ Supported actions: idea, task, archive, cancel, skip."
   (interactive)
   (let ((continue t))
     (while continue
-      (let ((nodes (workflow--quick-nodes)))
+      (let ((nodes (workflow-triage--quick-nodes)))
         (if (null nodes)
             (progn
               (setq continue nil)

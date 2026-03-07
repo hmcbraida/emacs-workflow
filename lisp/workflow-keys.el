@@ -8,14 +8,10 @@
 (require 'org-roam-config)
 (require 'workflow-lifecycle)
 (require 'workflow-triage)
+(require 'workflow-search)
 
 (defvar workflow-notes-map (make-sparse-keymap)
   "Keymap for personal workflow commands.")
-
-(defun workflow-search-notes ()
-  "Run regex search scoped to the workflow notes directory."
-  (interactive)
-  (consult-ripgrep workflow-org-directory))
 
 (define-key global-map (kbd "C-c n") workflow-notes-map)
 
@@ -34,6 +30,15 @@
 ;; Linking and search
 (define-key workflow-notes-map (kbd "l") #'org-store-link)
 (define-key workflow-notes-map (kbd "s") #'workflow-search-notes)
+(define-key workflow-notes-map (kbd "g a") #'org-roam-tag-add)
+
+;; Saved views
+(define-key workflow-notes-map (kbd "v t") #'workflow-view-open-tasks)
+(define-key workflow-notes-map (kbd "v a") #'workflow-view-active-tasks)
+(define-key workflow-notes-map (kbd "v r") #'workflow-view-recent-resolved)
+(define-key workflow-notes-map (kbd "v q") #'workflow-view-quick-inbox)
+(define-key workflow-notes-map (kbd "v l") #'workflow-view-linked-tasks-for-current-note)
+(define-key workflow-notes-map (kbd "v b") #'workflow-show-related-notes)
 
 ;; Lifecycle transitions
 (define-key workflow-notes-map (kbd "p") #'workflow-promote-idea-to-tasks)

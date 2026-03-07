@@ -5,6 +5,7 @@
 
 (require 'org-core)
 (require 'seq)
+(require 'subr-x)
 
 (use-package org-roam
   :init
@@ -47,11 +48,25 @@
                 org-roam-capture-templates)
       (user-error "No Org-roam template found for key: %s" key)))
 
+(defun workflow--capture-title-for-key (key)
+  "Prompt for a capture title for template KEY.
+Return a non-empty title string."
+  (let* ((label (pcase key
+                  ("i" "Idea")
+                  ("t" "Task")
+                  ("r" "Resolved")
+                  ("f" "Reference")
+                  (_ "Note")))
+         (input (string-trim (read-string (format "%s title: " label)))))
+    (if (string-empty-p input)
+        (format "%s %s" label (format-time-string "%Y-%m-%d %H:%M"))
+      input)))
+
 (defun workflow-roam-capture-by-key (key)
   "Create a new Org-roam note using template KEY."
   (delete-other-windows)
   (org-roam-capture-
-   :node (org-roam-node-create)
+   :node (org-roam-node-create :title (workflow--capture-title-for-key key))
    :templates (list (workflow--roam-template-for-key key))
    :props '(:finalize find-file)))
 

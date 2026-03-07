@@ -36,6 +36,21 @@
   "Return non-nil when current note has file TAG."
   (member tag (workflow--filetags)))
 
+(defun workflow--set-current-filetags (tags)
+  "Set current note file TAGS exactly."
+  (let ((cleaned (seq-uniq (seq-filter (lambda (tag) (not (string-empty-p tag))) tags))))
+    (org-roam-set-keyword "filetags" (org-make-tag-string cleaned))
+    (save-buffer)
+    (org-roam-db-update-file)
+    cleaned))
+
+(defun workflow--update-current-filetags (add remove)
+  "Add tags in ADD and remove tags in REMOVE for current note."
+  (let* ((current (workflow--filetags))
+         (after-remove (seq-difference current remove #'string-equal))
+         (result (append add after-remove)))
+    (workflow--set-current-filetags result)))
+
 (defun workflow--note-timestamp ()
   "Return a compact timestamp suitable for note filenames."
   (format-time-string "%Y%m%d%H%M%S%N"))
@@ -173,6 +188,7 @@ TITLES-INPUT is a semicolon-separated list of task titles."
         (workflow--append-link-under-heading
          "Links"
          (format "- Resolved as [[id:%s][%s]]" resolved-id resolved-title))
+        (workflow--update-current-filetags '("resolved") nil)
         (save-buffer)
         (find-file resolved-path)
         (message "Task resolved and linked")))))

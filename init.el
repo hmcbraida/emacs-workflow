@@ -11,6 +11,7 @@
 (require 'org-roam-config)
 (require 'workflow-lifecycle)
 (require 'workflow-triage)
+(require 'workflow-search)
 (require 'workflow-keys)
 
 (provide 'init)
