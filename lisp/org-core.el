@@ -50,12 +50,32 @@
   (with-temp-file org-id-locations-file
     (prin1 '() (current-buffer))))
 
+(defun workflow-org--refill-safe-p ()
+  "Return non-nil when point is in prose that should be refilled."
+  (let ((type (org-element-type (org-element-context))))
+    (not (memq type
+               '(babel-call comment comment-block drawer dynamic-block fixed-width
+                 example-block headline inline-src-block keyword node-property
+                 planning property-drawer src-block table table-row verse-block)))))
+
+(defun workflow-org--refill-after-insert ()
+  "Aggressively refill Org prose after typing."
+  (when (and (workflow-org--refill-safe-p)
+             (not (and (memq last-command-event '(?\s ?\t))
+                       (eolp))))
+    (save-excursion
+      (org-fill-paragraph nil))))
+
+(defun workflow-org--setup-fill ()
+  "Configure aggressive wrapping for Org prose at 80 columns."
+  (setq-local fill-column 80)
+  (auto-fill-mode -1)
+  (refill-mode -1)
+  (add-hook 'post-self-insert-hook #'workflow-org--refill-after-insert nil t))
+
 (use-package org
   :ensure nil
-  :hook ((org-mode . refill-mode)
-         (org-mode . (lambda ()
-                       (setq-local fill-column 80)
-                       (auto-fill-mode -1))))
+  :hook (org-mode . workflow-org--setup-fill)
   :config
   (setq org-log-done 'time))
 
