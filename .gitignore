@@ -6,6 +6,7 @@ org-roam.db
 auto-save-list/
 var/backups/
 var/auto-saves/
+var/lock-files/
 transient/
 url/
 .org-id-locations
