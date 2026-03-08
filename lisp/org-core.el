@@ -60,8 +60,9 @@
 (defun workflow-org--refill-after-insert ()
   "Aggressively refill Org prose after typing."
   (when (and (workflow-org--refill-safe-p)
+             (not (memq last-command-event '(?\n ?\r)))
              (not (and (memq last-command-event '(?\s ?\t))
-                       (eolp))))
+                        (eolp))))
     (save-excursion
       (org-fill-paragraph nil))))
 
