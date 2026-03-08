@@ -53,6 +53,14 @@
 (defvar workflow-git-sync--log-buffer " *workflow-git-sync*")
 (defvar workflow-git-sync--refresh-buffers-after-rebase nil)
 
+(defun workflow-git-sync--sync-org-roam-db ()
+  "Sync org-roam DB."
+  (condition-case err
+      (org-roam-db-sync)
+    (error
+     (message "Workflow git sync: org-roam db sync failed: %s"
+              (error-message-string err)))))
+
 (defun workflow-git-sync--commit-message ()
   "Return autosync commit message with timestamp."
   (format "workflow autosync: %s"
@@ -254,6 +262,7 @@ Return plist with keys :status (:ok/:error/:timeout), :code, and :output."
            result
            had-pending-debounce
            had-staged
+           had-upstream-updates
            ahead-count)
       (when workflow-git-sync--debounce-timer
         (setq had-pending-debounce t)
@@ -298,6 +307,14 @@ Return plist with keys :status (:ok/:error/:timeout), :code, and :output."
          (let ((output (workflow-git-sync--run-git-blocking-output result)))
            (if (string-empty-p output) "git fetch failed" output)))
         (cl-return-from workflow-git-sync--exit-flush nil))
+      (setq result (workflow-git-sync--run-git-blocking '("rev-list" "--count" "HEAD..@{u}") deadline))
+      (unless (workflow-git-sync--run-git-blocking-ok-p result)
+        (workflow-git-sync--exit-flush-error
+         (let ((output (workflow-git-sync--run-git-blocking-output result)))
+           (if (string-empty-p output) "failed checking behind commits" output)))
+        (cl-return-from workflow-git-sync--exit-flush nil))
+      (setq had-upstream-updates
+            (> (string-to-number (workflow-git-sync--run-git-blocking-output result)) 0))
       (setq result (workflow-git-sync--run-git-blocking '("rebase" "@{u}") deadline))
       (unless (workflow-git-sync--run-git-blocking-ok-p result)
         (workflow-git-sync--run-git-blocking '("rebase" "--abort") deadline)
@@ -305,6 +322,8 @@ Return plist with keys :status (:ok/:error/:timeout), :code, and :output."
          (let ((output (workflow-git-sync--run-git-blocking-output result)))
            (if (string-empty-p output) "rebase conflict" output)))
         (cl-return-from workflow-git-sync--exit-flush nil))
+      (when had-upstream-updates
+        (workflow-git-sync--sync-org-roam-db))
       (setq result (workflow-git-sync--run-git-blocking '("rev-list" "--count" "@{u}..HEAD") deadline))
       (unless (workflow-git-sync--run-git-blocking-ok-p result)
         (workflow-git-sync--exit-flush-error
@@ -439,7 +458,8 @@ Return plist with keys :status (:ok/:error/:timeout), :code, and :output."
    '("rebase" "@{u}")
    (lambda ()
      (when workflow-git-sync--refresh-buffers-after-rebase
-       (workflow-git-sync--refresh-org-buffers))
+       (workflow-git-sync--refresh-org-buffers)
+       (workflow-git-sync--sync-org-roam-db))
      (workflow-git-sync--check-ahead))
    (lambda (output)
      (workflow-git-sync--run-git
