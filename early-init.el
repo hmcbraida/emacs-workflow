@@ -8,7 +8,8 @@
 (setq inhibit-startup-screen t
       inhibit-startup-message t
       inhibit-startup-echo-area-message user-login-name
-      initial-scratch-message nil)
+      initial-scratch-message nil
+      ring-bell-function #'ignore)
 
 (menu-bar-mode -1)
 (tool-bar-mode -1)
